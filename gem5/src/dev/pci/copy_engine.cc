@@ -247,7 +247,7 @@ CopyEngine::CopyEngineChannel::channelRead(Packet *pkt, Addr daddr, int size)
         break;
       case CHAN_STATUS:
         assert(size == sizeof(uint64_t));
-        pkt->set<uint64_t>(cr.status() | ~busy);
+        pkt->set<uint64_t>(cr.status() | !busy);
         break;
       case CHAN_CHAINADDR:
         assert(size == sizeof(uint64_t) || size == sizeof(uint32_t));

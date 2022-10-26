@@ -740,6 +740,7 @@ gpu(ThreadContext *tc, uint64_t gpusysno, uint64_t call_params)
     }
 
     assert(gpusysno>=GEM5_GPU_CALLS_START and gpusysno<GEM5_GPU_CALLS_END);
+    printf("%s gem5pipe: received a graphics call number %d at tick %d\n", __FILE__, (int)gpusysno, curTick());
     DPRINTF(GraphicsCalls, "gem5pipe: received a graphics call number %d at tick %d\n", (int)gpusysno, curTick());
     gem5GraphicsCalls_t::gem5GraphicsCalls.executeGraphicsCommand(tc, gpusysno, call_params);
 }
