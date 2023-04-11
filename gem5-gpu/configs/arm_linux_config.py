@@ -179,7 +179,7 @@ print "Using %s memory model" % options.mem_type
 #if(options.???.lower().count('emm')): #bm?
 (cpu_mem_range, gpu_mem_range, total_mem_range) = GPUConfig.configureMemorySpaces(options)
 
-gpu_mem_range = AddrRange('10GB', size='1GB')
+gpu_mem_range = AddrRange('3GB', size='512MB')
 
 if options.benchmark:
     try:
@@ -223,7 +223,8 @@ system = makeArmSystem(test_mem_mode, options.machine_type,
                           bare_metal=options.bare_metal,
                           cmdline=cmd_line_template(),
                           external_memory=options.external_memory_system,
-                          ruby=options.ruby, kernel=options.kernel)
+                          ruby=options.ruby, kernel=options.kernel, 
+                          disktype=options.disk_type)
 if options.enable_context_switch_stats_dump:
     test_sys.enable_context_switch_stats_dump = True
 
@@ -276,8 +277,9 @@ Simulation.setWorkCountOptions(system, options)
 #
 # Create the GPU
 #
-vpo_mem_start = 0x80000000
+vpo_mem_start = 0xe0000000
 system.gpu = GPUConfig.createGPU(options, gpu_mem_range, vpo_mem_start)
+system.mem_ranges.append(gpu_mem_range)
 print "create GPU done"
 
 
@@ -327,7 +329,6 @@ if options.elastic_trace_en and options.checkpoint_restore == None and \
 
 CacheConfig.config_cache(options, system)
 
-system.mem_ranges.append(gpu_mem_range)
 MemConfig.config_mem(options, system)
 
 

@@ -519,6 +519,7 @@ class graphics_simt_pipeline {
                //printf("exiting prim %d\n", tile->primId);
                g_renderData.launchTCTile(m_cluster_id, NULL, tile->primId);
                m_ta_pipe->pop();
+               delete tile;
             }
          } else if(m_ta_stage.insert(tile)){
             m_ta_pipe->pop();

@@ -20,9 +20,9 @@ extern "C" void gpgpusimEndOfFrame() {
     g_renderData.endOfFrame();
 }
 
-extern "C" void gpgpusimInitializeCurrentDraw(struct tgsi_exec_machine* tmachine, void* sp, void* mapped_indices) {
+extern "C" void gpgpusimInitializeCurrentDraw(struct tgsi_exec_machine* tmachine, void* sp, void* mapped_indices, struct pipe_draw_info *info) {
     if(!gpgpusimSimulationActive()) return;
-    g_renderData.initializeCurrentDraw(tmachine, sp, mapped_indices);
+    g_renderData.initializeCurrentDraw(tmachine, sp, mapped_indices, info);
 }
 
 extern "C" void gpgpusimFinalizeCurrentDraw() {

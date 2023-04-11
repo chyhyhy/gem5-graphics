@@ -398,24 +398,18 @@ CudaCore::executeMemOp(const warp_inst_t &inst)
           lastPacket = pkt;
           pkt->allocate();
           pkt->setData(blockData[i]);
-          if (vpoWritePort.sendTimingReq(pkt)) {
-             succeeded = true;
-             DPRINTF(CudaCoreAccess, "Sent a write request to VPO, addr=%llx\n", addrBlocks[i]);
-          } else {
-             if(succeeded){
-                //if one packet was successful then 
-                //we push the rest in a queue to try later
-                vpoWritePkts.push(pkt);
-             } else {
-                delete pkt->req;
-                delete pkt;
-                //return true for pipeline stall
-                return true;
-             }
-          }
-       }
-       //assuming in-order responses
-       lastAttribPkts[lastPacket] = LastAttribPkt(kwip, inst.active_count());
+          vpoWritePkts.push(pkt);
+        }
+
+        //assuming in-order responses
+        lastAttribPkts[lastPacket] = LastAttribPkt(kwip, inst.active_count());
+        printf("lastAttribPkts[%p]\n", lastPacket);
+        while (vpoWritePkts.size() > 0) {
+            if(vpoWritePort.sendTimingReq(vpoWritePkts.front())) {
+                printf("Sent write request to VPO, addr=%lx\n", vpoWritePkts.front()->getAddr());
+                vpoWritePkts.pop();
+            } else break;
+        }
     } else {
        for (int lane = 0; lane < warpSize; lane++) {
           if (inst.active(lane)) {

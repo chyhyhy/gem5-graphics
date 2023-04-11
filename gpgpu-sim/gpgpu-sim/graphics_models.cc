@@ -52,6 +52,8 @@ bool graphics_simt_pipeline::add_prim_batch(std::vector<unsigned> coverage_batch
 
    for(unsigned cid=0; cid<coverage_masks.size(); cid++)
       m_curr_coverage_masks.push_back(c_mask_t(cid, coverage_masks[cid]));
+
+   return true;
 }
 
 void graphics_simt_pipeline::run_out_prim_batch(){

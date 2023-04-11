@@ -27,8 +27,8 @@ void recvCommandBuffer(void* tInfo, void* stream, void* checksumCalc, void* read
 
 
 gem5GraphicsCalls_t gem5GraphicsCalls_t::gem5GraphicsCalls;
-int gem5GraphicsCalls_t::_frameBufferWidth = 0;
-int gem5GraphicsCalls_t::_frameBufferHeight = 0;
+int gem5GraphicsCalls_t::_frameBufferWidth = 1080;
+int gem5GraphicsCalls_t::_frameBufferHeight = 1920;
 std::string gem5GraphicsCalls_t::_dirName = "frames_gem5pipe";
 
 
@@ -48,11 +48,11 @@ static void onNewGpuFrame(void* opaque,
     assert(format == GL_RGBA);
     assert(type == GL_UNSIGNED_BYTE);
 
-    if(gpgpusimSimulationActive()){
-      gpgpusimEndOfFrame();
-      printf("gpgpusim: a new frame posted @ %ld\n", curTick());
-      return;
-    }
+    // if(gpgpusimSimulationActive()){
+    //   gpgpusimEndOfFrame();
+    //   printf("gpgpusim: a new frame posted @ %ld\n", curTick());
+    //   return;
+    // }
 
     static int fnum = 0;
     static OutputDirectory* outputDir = NULL;

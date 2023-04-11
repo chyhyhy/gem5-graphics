@@ -360,6 +360,8 @@ def addFSOptions(parser):
                       help="Path to the disk image to use.")
     parser.add_option("--root-device", action="store", type="string", default=None,
                       help="OS device name for root partition")
+    parser.add_option("--disk-type", action="store", type="string", default="raw",
+                      help="raw disk or cow disk")
 
     # Command line options
     parser.add_option("--command-line", action="store", type="string",

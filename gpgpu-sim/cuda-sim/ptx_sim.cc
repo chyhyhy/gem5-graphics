@@ -284,7 +284,7 @@ uint64_t ptx_thread_info::get_builtin( int builtin_id, unsigned dim_mod)
    case VERT_ATTRIB1:
    case VERT_ATTRIB2:
    case VERT_ATTRIB3:
-      return readShaderInputData(this,builtin_id, dim_mod).u32;
+      return readShaderInputData(this,builtin_id, dim_mod).u64;
    default: return readShaderInputData(this,builtin_id, dim_mod).u32;
    }
    return 0;

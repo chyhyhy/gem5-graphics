@@ -210,7 +210,7 @@ def makeSparcSystem(mem_mode, mdesc=None, cmdline=None):
 
 def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
                   dtb_filename=None, bare_metal=False, cmdline=None,
-                  external_memory="", ruby=False, kernel=""):
+                  external_memory="", ruby=False, kernel="", disktype="cow"):
     assert machine_type
 
     default_dtbs = {
@@ -272,8 +272,10 @@ def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
     # Attach any PCI devices this platform supports
     self.realview.attachPciDevices()
 
-    # self.cf0 = CowIdeDisk(driveID='master')
-    self.cf0 = RawIdeDisk(driveID='master')
+    if disktype == "cow":
+        self.cf0 = CowIdeDisk(driveID='master')
+    else:
+        self.cf0 = RawIdeDisk(driveID='master')
     self.cf0.childImage(mdesc.disk())
     # Old platforms have a built-in IDE or CF controller. Default to
     # the IDE controller if both exist. New platforms expect the
@@ -365,16 +367,15 @@ def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
                 cmdline += " androidboot.hardware=gem5 qemu=1 qemu.gles=0 " + \
                            "android.bootanim=0 "
             elif 'nougat' in mdesc.os_type():
-                cmdline += " androidboot.hardware=goldfish qemu=1 qemu.gles=1 " + \
+                cmdline += " androidboot.hardware=ranchu qemu=1 qemu.gles=1 " + \
                            "qemu.opengles.version=196608 " + \
                            "cma=128M " + \
                            "vmalloc=640MB " + \
                            "android.early.fstab=/fstab.gem5 " + \
                            "androidboot.selinux=permissive " + \
                            "audit=0 " + \
-                           "android.bootanim=0 "
+                           "android.bootanim=1 "
 
-        print cmdline
         self.boot_osflags = fillInCmdline(mdesc, cmdline)
 
     if external_memory:
