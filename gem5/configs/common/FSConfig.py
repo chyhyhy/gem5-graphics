@@ -43,6 +43,7 @@ from m5.objects import *
 from Benchmarks import *
 from m5.util import *
 from common import PlatformConfig
+from common import Options
 
 # Populate to reflect supported os types per target ISA
 os_types = { 'alpha' : [ 'linux' ],
@@ -209,21 +210,23 @@ def makeSparcSystem(mem_mode, mdesc=None, cmdline=None):
 
 def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
                   dtb_filename=None, bare_metal=False, cmdline=None,
-                  external_memory="", ruby=False):
+                  external_memory="", ruby=False, kernel="", disktype="cow"):
     assert machine_type
 
     default_dtbs = {
         "RealViewEB": None,
         "RealViewPBX": None,
-        "VExpress_EMM": "vexpress.aarch32.ll_20131205.0-gem5.%dcpu.dtb" % num_cpus,
-        "VExpress_EMM64": "vexpress.aarch64.20140821.dtb",
+        "VExpress_EMM": "armv8_gem5_v1_1cpu_mobile.dtb", #"vexpress-v2p-ca15_a7.dtb", #vexpress.aarch32.ll_20131205.0-gem5.%dcpu.dtb" % num_cpus,
+        "VExpress_EMM64":"armv8_gem5_v1_1cpu_mobile.dtb", # "vexpress.aarch64.20140821.dtb",
+        "VExpress_GEM5_V1":"armv8_gem5_v1_1cpu_mobile.dtb"
     }
 
     default_kernels = {
         "RealViewEB": "vmlinux.arm.smp.fb.2.6.38.8",
         "RealViewPBX": "vmlinux.arm.smp.fb.2.6.38.8",
-        "VExpress_EMM": "vmlinux.aarch32.ll_20131205.0-gem5",
-        "VExpress_EMM64": "vmlinux.aarch64.20140821",
+        "VExpress_EMM":  "vmlinux", #"vmlinux.arm", # "vmlinux.aarch32.ll_20131205.0-gem5",
+        "VExpress_EMM64": "vmlinux.arm64", #"vmlinux.aarch64.20140821",
+        "VExpress_GEM5_V1": "vmlinux",
     }
 
     pci_devices = []
@@ -266,20 +269,23 @@ def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
             print "Selected 64-bit ARM architecture, updating default disk image..."
             mdesc.diskname = 'linaro-minimal-aarch64.img'
 
-
     # Attach any PCI devices this platform supports
     self.realview.attachPciDevices()
 
-    self.cf0 = CowIdeDisk(driveID='master')
-    #self.cf0 = RawIdeDisk(driveID='master')
+    if disktype == "cow":
+        self.cf0 = CowIdeDisk(driveID='master')
+    else:
+        self.cf0 = RawIdeDisk(driveID='master')
     self.cf0.childImage(mdesc.disk())
     # Old platforms have a built-in IDE or CF controller. Default to
     # the IDE controller if both exist. New platforms expect the
     # storage controller to be added from the config script.
     if hasattr(self.realview, "ide"):
         self.realview.ide.disks = [self.cf0]
+        pci_devices.append(self.realview.ide)
     elif hasattr(self.realview, "cf_ctrl"):
         self.realview.cf_ctrl.disks = [self.cf0]
+        pci_devices.append(self.realview.cf_ctrl)
     else:
         self.pci_ide = IdeController(disks=[self.cf0])
         pci_devices.append(self.pci_ide)
@@ -309,7 +315,10 @@ def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
         self.realview.uart.end_on_eot = True
     else:
         if machine_type in default_kernels:
-            self.kernel = binary(default_kernels[machine_type])
+            if kernel:
+                self.kernel = binary(kernel)
+            else:
+                self.kernel = binary(default_kernels[machine_type])
 
         if dtb_filename:
             self.dtb_filename = binary(dtb_filename)
@@ -358,15 +367,14 @@ def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
                 cmdline += " androidboot.hardware=gem5 qemu=1 qemu.gles=0 " + \
                            "android.bootanim=0 "
             elif 'nougat' in mdesc.os_type():
-                cmdline += " androidboot.hardware=gem5 qemu=1 qemu.gles=1 " + \
+                cmdline += " androidboot.hardware=ranchu qemu=1 qemu.gles=1 " + \
                            "qemu.opengles.version=196608 " + \
                            "cma=128M " + \
                            "vmalloc=640MB " + \
                            "android.early.fstab=/fstab.gem5 " + \
                            "androidboot.selinux=permissive " + \
                            "audit=0 " + \
-                           "android.bootanim=0 "
-
+                           "android.bootanim=1 "
 
         self.boot_osflags = fillInCmdline(mdesc, cmdline)
 
@@ -394,7 +402,7 @@ def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
         # Force Ruby to treat the boot ROM as an IO device.
         self.realview.nvmem.in_addr_map = False
         #self.realview.attachIO(self.iobus, dma_ports=self._dma_ports)
-	self._dma_ports = [self.realview.cf_ctrl.dma, self.realview.clcd.dma]
+        self._dma_ports = [self.realview.cf_ctrl.dma, self.realview.clcd.dma]
                           # may connect later
                           #self.realview.hdlcd.dma, self.realview.h264_decoder.dma] 
         try:
@@ -405,7 +413,7 @@ def makeArmSystem(mem_mode, machine_type, num_cpus=1, mdesc=None,
         self.realview.attachOnChipIO(self.iobus, None, self._dma_ports)
     else:
         self.realview.attachOnChipIO(self.membus, self.bridge)
-        #self.realview.attachIO(self.iobus)
+        # self.realview.attachIO(self.iobus)
 
     for dev_id, dev in enumerate(pci_devices):
         dev.pci_bus, dev.pci_dev, dev.pci_func = (0, dev_id + 1, 0)

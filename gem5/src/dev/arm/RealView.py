@@ -891,7 +891,7 @@ Interrupts:
     """
 
     # Everything above 2GiB is memory
-    _mem_regions = [(Addr('2GB'), Addr('510GB'))]
+    _mem_regions = [(Addr('2GB'), Addr('1GB'))]
 
     _off_chip_ranges = [
         # CS1-CS5

@@ -373,7 +373,7 @@ struct stage_shading_info_t {
     unsigned vertShaderStvCount;
     std::vector<vertexData_t> vertexData;
     unsigned current_prim;
-    std::unordered_set<unsigned> sent_simt_prims;
+    std::map<unsigned, unsigned> sent_simt_prims;
     unsigned launched_threads_verts;
     unsigned completed_threads_verts;
     //std::deque<vertStats_t*> pvb_queue;
@@ -547,12 +547,12 @@ public:
     bool GPGPUSimSkipCpFrames();
     void endOfFrame();
     void registerPtxCode();
-    void initializeCurrentDraw (struct tgsi_exec_machine* tmachine, void* sp, void* mapped_indices);
+    void initializeCurrentDraw (struct tgsi_exec_machine* tmachine, void* sp, void* mapped_indices, struct pipe_draw_info * info);
     void finalizeCurrentDraw();
     bool m_flagEndVertexShader;
     bool m_flagEndFragmentShader;
     //pvbFetch_t checkVerts(unsigned newVerts, unsigned oldVerts);
-    unsigned getVertFromId(unsigned utid);
+    int getVertFromId(unsigned utid);
     unsigned getUniqueThreadsPerWarp();
     unsigned getExtraVerts(unsigned vertsCount);
     std::vector<unsigned> getPrimVertices(unsigned primId);
@@ -571,7 +571,7 @@ public:
     bool isVertWarpDone(unsigned warpId, unsigned vertCount);
     unsigned vShaderAttribWrites() const;
     void allocateVertBuffers();
-    unsigned int startShading();
+    void startShading();
     void endFragmentShading();
     void setVertexAttribsCount(struct tgsi_exec_machine *mach, int inputAttribsCount, int outputAttribsCount);
     void addVertex(struct tgsi_exec_machine* mach, int pos);
@@ -604,7 +604,7 @@ public:
     void doneEarlyZ(); 
     void launchFragmentTile(RasterTile * rasterTile, unsigned tileId);
     void launchVRTile();
-    void launchTCTile(unsigned clusterId, tcTilePtr_t tcTile, unsigned donePrims);
+    void launchTCTile(unsigned clusterId, tcTilePtr_t tcTile, int donePrims);
     void addPrimitive();
     void setVertShaderUsedRegs(int regs){
       m_usedVertShaderRegs = regs;

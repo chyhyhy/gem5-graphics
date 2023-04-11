@@ -33,6 +33,8 @@ from m5.objects import *
 from m5.util.convert import *
 from m5.util import fatal
 from common.Caches import *
+from m5.util import addToPath
+addToPath('../../gem5/configs/common')
 
 gpu_core_configs = ['Fermi', 'Maxwell', 'Tegra']
 
@@ -158,7 +160,7 @@ def parseGpgpusimConfig(options):
     # First check the cwd, and if there is not a gpgpusim.config file there
     # Use the template found in gem5-fusion/configs/gpu_config and fill in
     # the missing information with command line options.
-    if options.gpgpusim_config:
+    if options.gpgpusim_config == "gpu_soc.config":
         usingTemplate = False
         gpgpusimconfig = os.path.join(os.path.dirname(__file__),'gpu_config/'+options.gpgpusim_config)
         icntconfig = os.path.join(os.path.dirname(__file__),'gpu_config/'+options.icnt_config)
@@ -539,9 +541,9 @@ def connectGPUPorts_classic(system, gpu, options):
     gpu.l2cache.mem_side = system.membus.slave
 
     for i in range(options.clusters):
-      gpu.vpo_vert_read_port[i] = gpu.l2NetToL2.slave
-      gpu.vpo_dist_port_master[i] = gpu.l2NetToL2.slave
-      gpu.vpo_dist_port_slave[i] = gpu.l2NetToL2.master
+        gpu.vpo_vert_read_port[i] = gpu.l2NetToL2.slave
+        gpu.vpo_dist_port_master[i] = gpu.l2NetToL2.slave
+        gpu.vpo_dist_port_slave[i] = gpu.l2NetToL2.master
 
     for i,sc in enumerate(gpu.shader_cores):
         #readonly cache

@@ -550,6 +550,8 @@ byte* renderData_t::getVertAttribAddr(bool isInput, //is input or output vert ad
       index*idxStride + 
       //(dynamicVertId/utp)*padding +
       vertId*sizeof(GLfloat);
+
+   return addr;
 }
 
 shaderAttrib_t renderData_t::getVertexData(unsigned utid, unsigned tid, unsigned attribID, unsigned attribIndex,
@@ -558,13 +560,15 @@ shaderAttrib_t renderData_t::getVertexData(unsigned utid, unsigned tid, unsigned
    if( attribID == TGSI_FILE_CONSTANT){
       return getFileConst(m_sShading_info.vertConsts, utid, tid, attribID, attribIndex, fileIdx, idx2D, stream);
    } else if(attribID == VERT_ACTIVE){
-      unsigned vid = getVertFromId(utid);
+      int vid = getVertFromId(utid);
       //unsigned vid = utid;
       //if(utid > getVertsCount())
       if(vid >= m_sShading_info.vertexData.size())
          ret.u64 = 0;
       else 
          ret.u64 = 1;
+
+      printf("vid = %d, ret = %lx\n", vid, ret);
       return ret;
    } else if (attribID == VERT_ATTRIB_ADDR or attribID == VERT_WRITE_ADDR) {
       //actual vertex that this thread will work on depends on
@@ -575,6 +579,7 @@ shaderAttrib_t renderData_t::getVertexData(unsigned utid, unsigned tid, unsigned
       
       ret.u64 = 
          (uint64_t) getVertAttribAddr(isInput, dynamicVertId, attribIndex, idx2D);
+      printf("dynamicVertId = %d, ret = %lx\n", dynamicVertId, ret);
       return ret;
    } else {
       assert(0); //should not happen
@@ -750,7 +755,6 @@ void renderData_t::initParams(bool standaloneMode,
     m_frag_wg_size = frag_wg_size;
     m_inShaderBlending = (blendingMode != 0);
     m_inShaderDepth = (depthMode != 0);
-    printf("inshader depth = %d\n", m_inShaderDepth);
     m_cptStartFrame = cptStartFrame;
     m_cptEndFrame = cptEndFrame;
     m_cptPeroid = cptPeroid;
@@ -808,11 +812,12 @@ bool renderData_t::GPGPUSimActiveFrame() {
 }
 
 bool renderData_t::GPGPUSimSimulationActive() {
-   bool isFrame = GPGPUSimActiveFrame();
-   bool afterStartDrawcall = ((m_currentFrame== m_startFrame) and (m_drawcall_num >= m_startDrawcall)) or (m_currentFrame > m_startFrame);
-   bool beforeEndDrawcall =  ((m_currentFrame== m_endFrame) and (m_drawcall_num <= m_endDrawcall)) or (m_currentFrame < m_endFrame);
+   // bool isFrame = GPGPUSimActiveFrame();
+   // bool afterStartDrawcall = ((m_currentFrame== m_startFrame) and (m_drawcall_num >= m_startDrawcall)) or (m_currentFrame > m_startFrame);
+   // bool beforeEndDrawcall =  ((m_currentFrame== m_endFrame) and (m_drawcall_num <= m_endDrawcall)) or (m_currentFrame < m_endFrame);
 
-   return (isFrame and afterStartDrawcall and beforeEndDrawcall);
+   // return (isFrame and afterStartDrawcall and beforeEndDrawcall);
+   return 1;
 }
 
 bool renderData_t::GPGPUSimSkipCpFrames(){
@@ -1170,7 +1175,7 @@ void renderData_t::registerPtxCode(){
             -1, (uint3*)0, (uint3*)0, (dim3*)0, (dim3*)0, (int*)0);
 }
 
-void renderData_t::initializeCurrentDraw(struct tgsi_exec_machine* tmachine, void* sp, void* mapped_indices) {
+void renderData_t::initializeCurrentDraw(struct tgsi_exec_machine* tmachine, void* sp, void* mapped_indices, struct pipe_draw_info * info) {
     g_gpuMutex.lock();
     assert(getDeviceData() == NULL);
     m_deviceData = (byte*)0xDEADBEEF; //flags that a render operation is active
@@ -1196,7 +1201,7 @@ void renderData_t::initializeCurrentDraw(struct tgsi_exec_machine* tmachine, voi
     struct softpipe_context *softpipe = (struct softpipe_context *) m_sp;
     const void** constBufsFrag = softpipe->mapped_constants[PIPE_SHADER_FRAGMENT];
     const unsigned* constBufFragSizes = softpipe->const_buffer_size[PIPE_SHADER_FRAGMENT];
-    m_sShading_info.currPrimType = softpipe->reduced_api_prim;
+    m_sShading_info.currPrimType = info->mode;
 
     int ci = 0;
     while(constBufsFrag[ci]){
@@ -1234,14 +1239,16 @@ void renderData_t::initializeCurrentDraw(struct tgsi_exec_machine* tmachine, voi
         graphicsMalloc((void**) &m_deviceData, m_colorBufferByteSize);
     }
 
-    modeMemcpy(m_deviceData, m_currentRenderBufferBytes, 
-          getColorBufferByteSize(), graphicsMemcpyHostToSim);
-    assert(m_fbPixelSizeSim == 4);
-    writeDrawBuffer("pre", m_currentRenderBufferBytes,  m_colorBufferByteSize,
-          m_bufferWidth, m_bufferHeight, "bgra", 8);
-
-    delete [] m_currentRenderBufferBytes;
-    m_currentRenderBufferBytes = NULL;
+   if (m_currentRenderBufferBytes) {
+      modeMemcpy(m_deviceData, m_currentRenderBufferBytes, 
+            getColorBufferByteSize(), graphicsMemcpyHostToSim);
+      assert(m_fbPixelSizeSim == 4);
+      writeDrawBuffer("pre", m_currentRenderBufferBytes,  m_colorBufferByteSize,
+            m_bufferWidth, m_bufferHeight, "bgra", 8);
+      delete [] m_currentRenderBufferBytes;
+      m_currentRenderBufferBytes = NULL;
+   }
+   
 
     if(m_depthBuffer!=NULL) {
        writeDrawBuffer("pre_depth", m_depthBuffer,  m_depthBufferSize, m_bufferWidth, m_bufferHeight, "gray", 8*(int)m_mesaDepthSize);
@@ -1533,7 +1540,7 @@ bool renderData_t::depthTest(uint64_t oldDepthVal, uint64_t newDepthVal){
    }
 }*/
 
-unsigned renderData_t::getVertFromId(unsigned utid){
+int renderData_t::getVertFromId(unsigned utid){
    assert(utid < m_sShading_info.launched_threads_verts);
    unsigned warpId = utid/MAX_WARP_SIZE; 
    unsigned inWarpId = utid%MAX_WARP_SIZE;
@@ -1547,10 +1554,7 @@ unsigned renderData_t::getVertFromId(unsigned utid){
          return (warpId*(MAX_WARP_SIZE-1)) + inWarpId;
       case PIPE_PRIM_TRIANGLES:
       case PIPE_PRIM_TRIANGLE_STRIP:
-         return (warpId*(MAX_WARP_SIZE-2)) + inWarpId;
       case PIPE_PRIM_TRIANGLE_FAN:
-         if(inWarpId == 0)
-            return 0;
          return (warpId*(MAX_WARP_SIZE-2)) + inWarpId;
          //other modes are unsupported for now
       default:
@@ -1793,7 +1797,7 @@ void renderData_t::allocateVertBuffers(){
    }
 }
 
-unsigned int renderData_t::startShading() {
+void renderData_t::startShading() {
    registerPtxCode();
    allocateVertBuffers();
 
@@ -1809,11 +1813,8 @@ unsigned int renderData_t::startShading() {
    assert(m_sShading_info.fragCodeAddr == NULL);
    
 
-   for(int pnum=0; pnum<m_numClusters*drawPrimitives.size(); pnum++){
-      //TODO: fix me
-      if(getPrimVertices(pnum).back() < 
-            m_sShading_info.vertexData.size())
-         m_sShading_info.sent_simt_prims.insert(pnum);
+   for (unsigned pnum = 0; pnum < drawPrimitives.size(); pnum++) {
+      m_sShading_info.sent_simt_prims[pnum] = m_numClusters;
    }
 
    simt_core_cluster** simt_clusters = gpu->getSIMTCluster();
@@ -2138,7 +2139,7 @@ void renderData_t::launchVRTile(){
 
 void renderData_t::launchTCTile(
       unsigned clusterId,
-      tcTilePtr_t tcTile, unsigned donePrim){
+      tcTilePtr_t tcTile, int donePrim){
    if(tcTile == NULL){
       assert(donePrim >= 0);
 
@@ -2146,11 +2147,10 @@ void renderData_t::launchTCTile(
             == m_sShading_info.sent_simt_prims.end()){
          assert(0);
       }
-      assert(m_sShading_info.sent_simt_prims.find(donePrim) 
-            != m_sShading_info.sent_simt_prims.end());
-      m_sShading_info.sent_simt_prims.erase(donePrim);
-      DPRINTF(MesaGpgpusim, "received a prim done, sent_simt_prims = %d\n", 
-            m_sShading_info.sent_simt_prims.size());
+      
+      if (--m_sShading_info.sent_simt_prims[donePrim] == 0) {
+         m_sShading_info.sent_simt_prims.erase(donePrim);
+      }
 
       if(m_sShading_info.sent_simt_prims.size() == 0){
          assert(m_sShading_info.fragKernel!=NULL);
@@ -2338,7 +2338,8 @@ void renderData_t::modifyCodeForVertexWrite(std::string file){
       case PIPE_PRIM_TRIANGLE_FAN:
          predCode+= ".reg .pred pV0;\n";
          predCode+= "setp.ne.u32 pV0, %laneid, 0;\n";
-         predCode+= "setp.le.and.u32 pVertex, %laneid, 30, pV0\n";
+         predCode+= "setp.le.u32 pVertex, %laneid, 30;\n";
+         predCode+= "and.u32 pVertex, pVertex, pV0;\n";
          break;
          //other modes are unsupported for now
       default:
